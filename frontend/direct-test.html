@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProVibeCoder Blockchain Test (No MetaMask)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f5f7fa;
+        }
+        button {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #357abd;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        pre {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>ProVibeCoder Blockchain Test (Direct Connection)</h1>
+    
+    <div class="card">
+        <h2>Contract Addresses</h2>
+        <p><strong>ProVibeToken:</strong> <span id="tokenAddress">0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab</span></p>
+        <p><strong>ProjectRegistry:</strong> <span id="projectRegistryAddress">0x5b1869D9A4C187F2EAa108f3062412ecf0526b24</span></p>
+        <p><strong>TaskRegistry:</strong> <span id="taskRegistryAddress">0xCfEB869F69431e42cdB54A4F4f105C19C080A601</span></p>
+    </div>
+    
+    <div class="card">
+        <h2>Direct Connection</h2>
+        <button id="connectDirect">Connect to Ganache</button>
+        <p>First Ganache Account: <span id="currentAccount">Not connected</span></p>
+    </div>
+    
+    <div class="card">
+        <h2>Contract Interaction</h2>
+        <button id="getTokenInfo">Get Token Info</button>
+        <pre id="tokenInfo">Results will appear here...</pre>
+    </div>
+    
+    <div id="status"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@4.0.3/dist/web3.min.js"></script>
+    <script>
+        // Contract ABIs (simplified for this example)
+        const tokenABI = [
+            {"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"symbol","outputs":[{"name":"","type":"string"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+        ];
+        
+        // Contract addresses
+        const tokenAddress = document.getElementById('tokenAddress').textContent;
+        const projectRegistryAddress = document.getElementById('projectRegistryAddress').textContent;
+        const taskRegistryAddress = document.getElementById('taskRegistryAddress').textContent;
+        
+        // Web3 instance
+        let web3;
+        let tokenContract;
+        let currentAccount;
+        
+        // Status display function
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = isError ? 'error' : 'success';
+        }
+        
+        // Connect directly to Ganache
+        document.getElementById('connectDirect').addEventListener('click', async () => {
+            try {
+                // Connect to local Ganache instance
+                web3 = new Web3('http://localhost:8545');
+                
+                // Get accounts from Ganache
+                const accounts = await web3.eth.getAccounts();
+                currentAccount = accounts[0]; // Use the first account
+                document.getElementById('currentAccount').textContent = currentAccount;
+                
+                // Initialize contract
+                tokenContract = new web3.eth.Contract(tokenABI, tokenAddress);
+                
+                showStatus('Connected to Ganache successfully!');
+            } catch (error) {
+                showStatus('Failed to connect to Ganache: ' + error.message, true);
+            }
+        });
+        
+        // Get token info
+        document.getElementById('getTokenInfo').addEventListener('click', async () => {
+            if (!tokenContract) {
+                showStatus('Please connect to Ganache first.', true);
+                return;
+            }
+            
+            try {
+                const name = await tokenContract.methods.name().call();
+                const symbol = await tokenContract.methods.symbol().call();
+                const totalSupply = await tokenContract.methods.totalSupply().call();
+                let balance = '0';
+                
+                if (currentAccount) {
+                    balance = await tokenContract.methods.balanceOf(currentAccount).call();
+                }
+                
+                const info = {
+                    name,
+                    symbol,
+                    totalSupply: web3.utils.fromWei(totalSupply, 'ether'),
+                    balance: web3.utils.fromWei(balance, 'ether')
+                };
+                
+                document.getElementById('tokenInfo').textContent = JSON.stringify(info, null, 2);
+                showStatus('Token info retrieved successfully!');
+            } catch (error) {
+                showStatus('Error getting token info: ' + error.message, true);
+            }
+        });
+    </script>
+</body>
+</html>
